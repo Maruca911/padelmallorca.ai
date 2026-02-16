@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleDot, Instagram, Twitter, Mail, ArrowRight } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { isBackendEnabled, supabase } from '../lib/supabase';
+
+const BACKEND_DISABLED_NOTICE = 'Lead and newsletter submissions are temporarily unavailable while we complete backend setup. Please check back shortly.';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
-  const [subStatus, setSubStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [subStatus, setSubStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'disabled'>('idle');
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (!isBackendEnabled || !supabase) {
+      setSubStatus('disabled');
+      return;
+    }
     setSubStatus('loading');
     const { error } = await supabase.from('newsletter_subscribers').insert({ email });
     if (error) {
@@ -98,11 +104,12 @@ export default function Footer() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
                 required
+                disabled={!isBackendEnabled}
                 className="flex-1 px-3 py-2 rounded-lg bg-earth-700 border border-earth-600 text-white placeholder:text-sand-400 text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
               />
               <button
                 type="submit"
-                disabled={subStatus === 'loading'}
+                disabled={!isBackendEnabled || subStatus === 'loading'}
                 className="px-3 py-2 bg-forest-500 text-white rounded-lg hover:bg-forest-600 transition-colors disabled:opacity-50"
                 aria-label="Subscribe"
               >
@@ -114,6 +121,9 @@ export default function Footer() {
             )}
             {subStatus === 'error' && (
               <p className="text-red-400 text-xs mt-2">Something went wrong. Try again.</p>
+            )}
+            {(!isBackendEnabled || subStatus === 'disabled') && (
+              <p className="text-amber-300 text-xs mt-2">{BACKEND_DISABLED_NOTICE}</p>
             )}
           </div>
         </div>

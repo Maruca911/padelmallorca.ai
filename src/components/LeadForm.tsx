@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Send, CheckCircle, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { isBackendEnabled, supabase } from '../lib/supabase';
+
+const BACKEND_DISABLED_NOTICE = 'Lead and newsletter submissions are temporarily unavailable while we complete backend setup. Please check back shortly.';
 
 const locationOptions = [
   'Palma de Mallorca',
@@ -40,10 +42,14 @@ export default function LeadForm({ variant = 'full', defaultInterest }: LeadForm
     interest_type: defaultInterest ? [defaultInterest] : [] as string[],
     message: '',
   });
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'disabled'>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isBackendEnabled || !supabase) {
+      setStatus('disabled');
+      return;
+    }
     setStatus('loading');
     const { error } = await supabase.from('leads').insert({
       ...formData,
@@ -80,6 +86,7 @@ export default function LeadForm({ variant = 'full', defaultInterest }: LeadForm
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <fieldset disabled={!isBackendEnabled} className={`space-y-5 ${!isBackendEnabled ? 'opacity-70' : ''}`}>
       <div className={`grid ${variant === 'full' ? 'md:grid-cols-2' : ''} gap-5`}>
         <div>
           <label className={labelClass}>Name *</label>
@@ -216,7 +223,7 @@ export default function LeadForm({ variant = 'full', defaultInterest }: LeadForm
 
       <button
         type="submit"
-        disabled={status === 'loading'}
+        disabled={!isBackendEnabled || status === 'loading'}
         className="w-full flex items-center justify-center gap-2 px-8 py-4 bg-forest-500 text-white font-heading font-bold text-lg rounded-xl hover:bg-forest-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50"
       >
         {status === 'loading' ? (
@@ -226,6 +233,10 @@ export default function LeadForm({ variant = 'full', defaultInterest }: LeadForm
         )}
         {status === 'loading' ? 'Submitting...' : 'Get Matched Free'}
       </button>
+      </fieldset>
+      {(!isBackendEnabled || status === 'disabled') && (
+        <p className="text-amber-700 text-sm">{BACKEND_DISABLED_NOTICE}</p>
+      )}
     </form>
   );
 }

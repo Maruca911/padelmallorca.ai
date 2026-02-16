@@ -5,8 +5,10 @@ import PageMeta from '../components/PageMeta';
 import SectionHeading from '../components/SectionHeading';
 import FaqAccordion, { type FaqItem } from '../components/FaqAccordion';
 import ScrollReveal from '../components/ScrollReveal';
-import { supabase } from '../lib/supabase';
+import { isBackendEnabled, supabase } from '../lib/supabase';
 import StructuredData, { faqSchema } from '../components/StructuredData';
+
+const BACKEND_DISABLED_NOTICE = 'Lead and newsletter submissions are temporarily unavailable while we complete backend setup. Please check back shortly.';
 
 const generalFaqs: FaqItem[] = [
   { question: 'What is padel?', answer: 'Padel is a racket sport that combines elements of tennis and squash. It is played on an enclosed court about half the size of a tennis court, with walls that are part of the game. Padel is typically played in doubles, making it inherently social and fun for all ages.' },
@@ -64,10 +66,14 @@ const sections = [
 
 export default function Faq() {
   const [form, setForm] = useState({ name: '', email: '', question: '' });
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'disabled'>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isBackendEnabled || !supabase) {
+      setStatus('disabled');
+      return;
+    }
     setStatus('loading');
     const { error } = await supabase.from('contact_messages').insert(form);
     setStatus(error ? 'error' : 'success');
@@ -123,6 +129,7 @@ export default function Faq() {
                 <input
                   type="text"
                   required
+                  disabled={!isBackendEnabled}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-sand-300 bg-white text-earth-800 placeholder:text-earth-400 focus:outline-none focus:ring-2 focus:ring-forest-500 text-sm"
@@ -134,6 +141,7 @@ export default function Faq() {
                 <input
                   type="email"
                   required
+                  disabled={!isBackendEnabled}
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-sand-300 bg-white text-earth-800 placeholder:text-earth-400 focus:outline-none focus:ring-2 focus:ring-forest-500 text-sm"
@@ -144,6 +152,7 @@ export default function Faq() {
                 <label className="block text-sm font-semibold text-earth-700 mb-1.5">Your Question</label>
                 <textarea
                   required
+                  disabled={!isBackendEnabled}
                   value={form.question}
                   onChange={(e) => setForm({ ...form, question: e.target.value })}
                   rows={4}
@@ -154,12 +163,15 @@ export default function Faq() {
               {status === 'error' && <p className="text-red-600 text-sm">Something went wrong. Please try again.</p>}
               <button
                 type="submit"
-                disabled={status === 'loading'}
+                disabled={!isBackendEnabled || status === 'loading'}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-forest-500 text-white font-heading font-bold rounded-xl hover:bg-forest-600 transition-colors disabled:opacity-50"
               >
                 {status === 'loading' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 {status === 'loading' ? 'Sending...' : 'Ask Question'}
               </button>
+              {(!isBackendEnabled || status === 'disabled') && (
+                <p className="text-amber-700 text-sm">{BACKEND_DISABLED_NOTICE}</p>
+              )}
             </form>
           )}
         </div>
